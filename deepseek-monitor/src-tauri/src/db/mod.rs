@@ -101,6 +101,23 @@ impl Database {
             .await?;
         }
 
+        // Self-healing migration: Generate a cryptographically secure proxy token if empty or 'auto-generate'
+        let token_row: Option<String> = sqlx::query_scalar(
+            "SELECT value FROM app_settings WHERE key = 'proxy_token'"
+        )
+        .fetch_optional(&self.pool)
+        .await?;
+
+        if token_row.is_none() || token_row.as_deref() == Some("auto-generate") || token_row.as_deref() == Some("") {
+            let secure_token = format!("sk-local-{}", uuid::Uuid::new_v4().to_string().replace("-", ""));
+            sqlx::query(
+                "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES ('proxy_token', ?1, datetime('now'))"
+            )
+            .bind(&secure_token)
+            .execute(&self.pool)
+            .await?;
+        }
+
         Ok(())
     }
 

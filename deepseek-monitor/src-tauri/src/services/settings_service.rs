@@ -126,6 +126,7 @@ impl SettingsService {
     }
 
     fn default_settings() -> AppSettings {
+        let secure_token = format!("sk-local-{}", uuid::Uuid::new_v4().to_string().replace("-", ""));
         AppSettings {
             balance_refresh_interval_seconds: 60,
             startup_on_login: true,
@@ -135,8 +136,8 @@ impl SettingsService {
             proxy_enabled: true,
             proxy_host: "127.0.0.1".to_string(),
             proxy_port: 8787,
-            proxy_require_token: false,
-            proxy_token: String::new(),
+            proxy_require_token: true,
+            proxy_token: secure_token,
             inject_stream_usage: true,
             max_body_size_mb: 20,
             max_concurrent_requests: 32,

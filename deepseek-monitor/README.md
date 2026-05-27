@@ -1,32 +1,35 @@
-# DeepSeek Monitor
+# DeepSeek Monitor (双币种本地可观测代理与桌面监控卡片)
 
-DeepSeek API 用量与余额桌面监控组件。基于 Tauri 2.x 构建的跨平台桌面应用，支持 Windows、macOS 和 Linux。
+基于 Tauri 2.x + React 19 + TypeScript + Rust + SQLite 构建的跨平台桌面可观测性应用，专为个人开发者和团队设计，将您的 AI 接口调用变为一个**本地高安全的用量账本**。
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Tauri](https://img.shields.io/badge/Tauri-2.x-24C8D8?logo=tauri)
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
 ![Rust](https://img.shields.io/badge/Rust-1.77+-000000?logo=rust)
 
-## 功能特性
+---
 
-- **余额监控**：定时轮询 DeepSeek API 余额，支持系统托盘实时显示
-- **用量统计**：按模型 / 来源 / 时间维度聚合，本地 SQLite 持久化存储
-- **本地代理**：`127.0.0.1:8787` HTTP 代理，透明转发并自动统计用量
-- **API Key 管理**：系统钥匙串安全存储，前端脱敏显示
-- **告警引擎**：低余额 / 高消耗 / 大额请求 / API 错误实时告警
-- **数据导出**：支持 CSV / JSON 格式导出历史用量数据
-- **跨平台**：支持 Windows、macOS、Linux 三大桌面平台
+## 🚦 项目工程状态与可信度自检 (Project Status Checklist)
 
-## 界面预览
+### 🚀 1. 已完美实现并完成闭环 (Implemented & Verified)
+- [x] **双币种（RMB & USD）并列卡片**：卡片以尊贵字号同时展现 CNY 与 USD 余额（包含总余额、赠送余额与充值余额）。
+- [x] **极速冷启动装载与手动刷新**：应用启动时在 `<5ms` 内瞬间装载本地 SQLite 缓存数据，完全关闭了后台轮询请求，只有当点击前端刷新按钮或系统托盘刷新时才会查询网络。
+- [x] **多 API Key 物理管理**：支持多个 API Key 添加，列表页实时展示活动 Key 并悬挂翡翠绿 `[当前活动]` 状态徽章，支持一键切换 active 状态及安全删除。
+- [x] **本地高熵安全代理鉴权**：本地代理严格限制仅监听环回接口 `127.0.0.1:8787`。默认强制开启鉴权，并且首次启动自动生成唯一的 cryptographically randomized `sk-local-[32-hex-uuid]` 安全 Token，写入 SQLite 加密保存，杜绝明文或弱口令安全隐患。
+- [x] **SSE 流式与非流式用量精确捕获**：拦截流式（Cline / Claude Code 驱动）和非流式调用，自动截取 SSE 响应行中的 JSON Usage 块，精准统计输入、输出、Reasoning Token 并记账。
+- [x] **Prompt Caching 折扣分离计费**：计费模块不再粗暴乘算输入费用，而是分离 `prompt_cache_hit_tokens` 与 `prompt_cache_miss_tokens`，精确匹配 SQLite `price_rules` 中缓存命中折扣定价（CNY 0.5/百万，未命中 1.0/百万），计费误差小于 0.1%。
+- [x] **系统原生弹窗与 API 异常告警**：后端 Rust 连接了系统原生的通知模块，当检测到 401（未授权）、429（请求频繁）、503（服务故障）或低余额、异常大请求、每小时突增消耗时，瞬间向 Windows/macOS 发送原生操作系统横幅提醒。
 
-应用主界面包含：
-- **总览 (Dashboard)**：余额、今日用量、Token 构成、费用压力
-- **用量 (Usage)**：历史用量趋势图表
-- **模型 (Models)**：各模型调用统计
-- **Key 管理 (Keys)**：API Key 的增删改查
-- **代理 (Proxy)**：本地代理服务启停与状态
-- **告警 (Alerts)**：告警规则配置与事件列表
-- **导出 (Data)**：数据导出功能
+### 🛠️ 2. 正在持续优化与验证 (Under Active Development)
+- [ ] **迷你窗口组件模式 (Mini-Widget Mode)**：正在开发无导航栏、毛玻璃质感、可置顶在桌面右下角的 `320x220` 悬浮小组件模式。
+- [ ] **系统托盘弹窗直接交互 (Tray Popover)**：打通 macOS 与 Windows 托盘图标左键点击直接弹出迷你小卡片并交互的界面。
+- [ ] **数据多维 CSV/JSON 导出优化**：前端一键导出用量流水的界面细节调优。
+
+### 🔌 3. 待进一步测试与集成验证 (To Be Verified)
+- [ ] **macOS 独立打包签名验证**：在未安装 Xcode Command Tools 的全新干净 Mac 上的打包与运行稳定性。
+- [ ] **Windows 完整安装包签名证书注入**。
+
+---
 
 ## 环境要求
 

@@ -1,39 +1,17 @@
-# DeepSeek API Monitor (双币种桌面监控组件)
+# DeepSeek API Monitor (双币种本地可观测代理与余额桌面监控组件)
 
-> 🚀 **基于 Tauri 2.x + React 19 + TypeScript + Rust + SQLite 构建的跨平台桌面应用。**  
-> 专为个人开发者和团队设计，支持 **人民币 (CNY) / 美元 (USD) 双币种并列展示**、**免后台轮询的手动刷新与冷启动装载**，并通过本地 Axum 代理完美统计 **流式请求 (Cline / Claude Code)** 的 Token 消耗与计费。
+> 🚀 **基于 Tauri 2.x + React 19 + TypeScript + Rust + SQLite 构建的跨平台桌面可观测性应用。**  
+> 本项目专为个人开发者和团队设计，将您的 AI 接口调用变为一个**本地高安全的离线记账本**。支持 **人民币 (CNY) / 美元 (USD) 双币种并列展示**、**免后台轮询的冷启动装载**，并通过本地 Axum 高安全环回代理完美统计 **流式请求 (Cline / Cursor / Claude Code)** 的 Token 消耗与 Prompt 缓存命中计费。
 
 ![Tauri 2.x](https://img.shields.io/badge/Tauri-2.x-24C8D8?logo=tauri&style=flat-square)
 ![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&style=flat-square)
 ![Tailwind CSS v4](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?logo=tailwindcss&style=flat-square)
-![Framer Motion](https://img.shields.io/badge/Framer_Motion-Anim-FF00C1?logo=framer&style=flat-square)
 ![Rust 1.77+](https://img.shields.io/badge/Rust-1.77%2B-000000?logo=rust&style=flat-square)
 ![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?logo=sqlite&style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 ---
 
-## 🌟 核心特性 (Key Features)
-
-### 💎 1. 双币种并列尊享看板 (RMB & USD Stacked Display)
-- **主余额显示**：主卡片区域优先以尊贵大字号显示**人民币余额 (CNY)**，在其下方优雅并列显示**美元余额 (USD)**。
-- **子额度分离**：将“赠送余额”与“充值余额”小状态框重构，同时叠放人民币与美元的精确值。
-- **全量保存与持久化分发**：Rust 后端在拉取接口时会全量捕获 DeepSeek 返回的双币种信息并存入数据库，确保历史记录和展示的数据偏差为零。
-
-### 🔋 2. 极致手动刷新控制 (Zero Background Polling & Local Cache Loader)
-- **拒绝后台网络开销**：完全关闭了无限循环自动后台轮询 API 的逻辑，保护您的 API 调用额度及流量。
-- **离线秒开机制**：在软件启动时，异步从 SQLite 极速装载上一次同步并加密缓存好的余额数据，**实现秒开且不发送任何网络请求**。
-- **手动一键同步**：只有在前端手动点击“刷新”键，或系统托盘菜单中选择“刷新余额”时，才会实时发起网络查询，完美掌控查询节奏。
-
-### 🔌 3. 完备的流式 SSE 拦截器 (Cline / Claude Code 完美统计)
-- **零延迟拦截转发**：采用 Axum 结合 Rust 异步生成流（`async-stream`），对流式请求（`stream=true`）进行无延迟的字节转发。
-- **SSE Chunk 精准解析**：在后台拼接字节并按行解析 SSE 报文，提取末尾携带的 `usage` 块，获取精确的 `prompt_tokens`、`completion_tokens`、`reasoning_tokens` 以及 `estimated_cost`。
-- **IDE 插件完美监控**：Cline、Claude Code、Cursor 等 IDE 插件通过配置本地 `base_url` 后，所有调用均可被高精度统计。
-
-### 🛡️ 4. 全局告警引擎与原生系统推送 (Alert Engine & OS Notifications)
-- **系统原生弹窗**：后端 Rust 连接了 `tauri-plugin-notification` 模块。警报被触发时，会立即向 Windows/macOS 操作系统发送系统级原生推送。
-- **全场景安全检测**：
-  - 余额检测：当前余额低于设定的 `low_balance_threshold` 阈值时触发。
   - 请求检测：单次代理调用 Token 消耗超过设定的超大阈值时触发。
   - 费用突增：近一小时消耗突破阈值时触发。
   - API 状态异常：捕获代理转发中出现的 401（Key 无效）、429（请求频繁）、503（服务不可用）并生成错误告警。
