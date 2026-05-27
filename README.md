@@ -54,11 +54,28 @@
 
 ## ⚙️ 环境要求 (Prerequisites)
 
+### 1. 通用依赖 (General Dependencies)
+
 | 依赖 | 版本要求 | 说明 |
 |------|---------|------|
 | Node.js | >= 18 | 前端构建环境 |
 | Rust | >= 1.77.2 | 后端编译环境（安装 `rustup`） |
 | npm / pnpm | 任意 | 包管理器 |
+
+### 2. 🖥️ 平台特定开发工具 (Platform Prerequisites)
+
+* **macOS**:
+  macOS 用户必须安装 **Xcode Command Line Tools** 以获取 `clang` 编译器与系统 SDK 链接库，否则构建 Rust 后端和连接 macOS Keychain 钥匙串时会报错。
+  在终端运行以下指令安装：
+  ```bash
+  xcode-select --install
+  ```
+* **Windows**: 无需额外依赖（建议确保已安装 C++ 编译工具，即 Visual Studio Build Tools）。
+* **Linux (Ubuntu/Debian)**:
+  ```bash
+  sudo apt update
+  sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+  ```
 
 ---
 

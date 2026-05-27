@@ -38,9 +38,13 @@ DeepSeek API 用量与余额桌面监控组件。基于 Tauri 2.x 构建的跨�
 
 ### 平台特定依赖
 
-**Windows**: 无需额外依赖
+**macOS**:
+需要安装 **Xcode Command Line Tools** 以便 Rust 编译器能够调用 `clang` 和系统 SDK：
+```bash
+xcode-select --install
+```
 
-**macOS**: 无需额外依赖
+**Windows**: 无需额外依赖（建议确保安装了 C++ 编译工具）
 
 **Linux (Ubuntu/Debian)**:
 ```bash
