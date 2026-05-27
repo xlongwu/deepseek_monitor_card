@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS request_logs (
     error_code TEXT,
     error_message TEXT,
 
-    created_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY(api_key_id) REFERENCES api_keys(id)
 );
 

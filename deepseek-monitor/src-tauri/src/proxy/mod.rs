@@ -276,6 +276,18 @@ async fn forward_proxy_request(
 
     let model = body_json.get("model").and_then(|v| v.as_str()).unwrap_or("unknown").to_string();
 
+    // Query default currency dynamically from app_settings
+    let currency = sqlx::query_scalar::<_, String>(
+        "SELECT value FROM app_settings WHERE key = 'default_currency'"
+    )
+    .fetch_optional(state.db.pool())
+    .await
+    .ok()
+    .flatten()
+    .unwrap_or_else(|| "CNY".to_string());
+
+    let currency_clone = currency.clone();
+
     let response = match client.post(target_url)
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
@@ -386,8 +398,29 @@ async fn forward_proxy_request(
                     None
                 }
             });
+
+            let prompt_cache_hit_tokens = captured_usage.as_ref().and_then(|u| {
+                u.get("prompt_cache_hit_tokens").or_else(|| u.get("cache_read_input_tokens")).and_then(|v| v.as_i64())
+            });
+            let prompt_cache_miss_tokens = captured_usage.as_ref().and_then(|u| {
+                u.get("prompt_cache_miss_tokens").and_then(|v| v.as_i64())
+            });
+            let reasoning_tokens = captured_usage.as_ref().and_then(|u| {
+                u.get("completion_tokens_details")
+                    .and_then(|d| d.get("reasoning_tokens"))
+                    .or_else(|| u.get("reasoning_tokens"))
+                    .and_then(|v| v.as_i64())
+            });
             
-            let estimated_cost = calculate_cost(&model_clone, prompt_tokens, completion_tokens, &state_clone).await;
+            let estimated_cost = calculate_cost(
+                &model_clone, 
+                prompt_tokens, 
+                prompt_cache_hit_tokens,
+                prompt_cache_miss_tokens,
+                completion_tokens, 
+                &currency_clone,
+                &state_clone
+            ).await;
             
             let log = RequestLog {
                 id: request_id_clone.clone(),
@@ -406,20 +439,11 @@ async fn forward_proxy_request(
                 prompt_tokens,
                 completion_tokens,
                 total_tokens: total_tokens_val,
-                prompt_cache_hit_tokens: captured_usage.as_ref().and_then(|u| {
-                    u.get("prompt_cache_hit_tokens").or_else(|| u.get("cache_read_input_tokens")).and_then(|v| v.as_i64())
-                }),
-                prompt_cache_miss_tokens: captured_usage.as_ref().and_then(|u| {
-                    u.get("prompt_cache_miss_tokens").and_then(|v| v.as_i64())
-                }),
-                reasoning_tokens: captured_usage.as_ref().and_then(|u| {
-                    u.get("completion_tokens_details")
-                        .and_then(|d| d.get("reasoning_tokens"))
-                        .or_else(|| u.get("reasoning_tokens"))
-                        .and_then(|v| v.as_i64())
-                }),
+                prompt_cache_hit_tokens,
+                prompt_cache_miss_tokens,
+                reasoning_tokens,
                 estimated_cost: Some(estimated_cost.clone()),
-                currency: Some("CNY".to_string()),
+                currency: Some(currency_clone.clone()),
                 usage_captured: if captured_usage.is_some() { 1 } else { 0 },
                 usage_missing_reason: if captured_usage.is_none() { Some("Stream usage not found".to_string()) } else { None },
             };
@@ -429,7 +453,9 @@ async fn forward_proxy_request(
             let pool = state_clone.db.pool().clone();
             
             tokio::spawn(async move {
-                let _ = aggregator.log_request(&log).await;
+                if let Err(e) = aggregator.log_request(&log).await {
+                    error!("Failed to log streaming proxy request to SQLite: {}", e);
+                }
                 
                 // Fetch alert configs and run checks
                 let s = sqlx::query_as::<_, (String, String)>("SELECT key, value FROM app_settings")
@@ -515,7 +541,28 @@ async fn forward_proxy_request(
             (None, None, None)
         };
 
-        let estimated_cost = calculate_cost(&model, prompt_tokens, completion_tokens, &state).await;
+        let prompt_cache_hit_tokens = usage.as_ref().and_then(|u| {
+            u.get("prompt_cache_hit_tokens").or_else(|| u.get("cache_read_input_tokens")).and_then(|v| v.as_i64())
+        });
+        let prompt_cache_miss_tokens = usage.as_ref().and_then(|u| {
+            u.get("prompt_cache_miss_tokens").and_then(|v| v.as_i64())
+        });
+        let reasoning_tokens = usage.as_ref().and_then(|u| {
+            u.get("completion_tokens_details")
+                .and_then(|d| d.get("reasoning_tokens"))
+                .or_else(|| u.get("reasoning_tokens"))
+                .and_then(|v| v.as_i64())
+        });
+
+        let estimated_cost = calculate_cost(
+            &model, 
+            prompt_tokens, 
+            prompt_cache_hit_tokens,
+            prompt_cache_miss_tokens,
+            completion_tokens, 
+            &currency, 
+            &state
+        ).await;
 
         let log = RequestLog {
             id: request_id,
@@ -534,20 +581,11 @@ async fn forward_proxy_request(
             prompt_tokens,
             completion_tokens,
             total_tokens,
-            prompt_cache_hit_tokens: usage.as_ref().and_then(|u| {
-                u.get("prompt_cache_hit_tokens").or_else(|| u.get("cache_read_input_tokens")).and_then(|v| v.as_i64())
-            }),
-            prompt_cache_miss_tokens: usage.as_ref().and_then(|u| {
-                u.get("prompt_cache_miss_tokens").and_then(|v| v.as_i64())
-            }),
-            reasoning_tokens: usage.as_ref().and_then(|u| {
-                u.get("completion_tokens_details")
-                    .and_then(|d| d.get("reasoning_tokens"))
-                    .or_else(|| u.get("reasoning_tokens"))
-                    .and_then(|v| v.as_i64())
-            }),
+            prompt_cache_hit_tokens,
+            prompt_cache_miss_tokens,
+            reasoning_tokens,
             estimated_cost: Some(estimated_cost),
-            currency: Some("CNY".to_string()),
+            currency: Some(currency.clone()),
             usage_captured: if usage_exists { 1 } else { 0 },
             usage_missing_reason: if !usage_exists { Some("No usage in response".to_string()) } else { None },
         };
@@ -559,7 +597,9 @@ async fn forward_proxy_request(
         let total_tokens_val = total_tokens;
 
         tokio::spawn(async move {
-            let _ = aggregator.log_request(&log).await;
+            if let Err(e) = aggregator.log_request(&log).await {
+                error!("Failed to log non-streaming proxy request to SQLite: {}", e);
+            }
             
             // Check alerts
             let s = sqlx::query_as::<_, (String, String)>("SELECT key, value FROM app_settings")
@@ -674,45 +714,63 @@ async fn handle_balance(State(state): State<ProxyState>) -> impl IntoResponse {
 async fn calculate_cost(
     model: &str,
     prompt_tokens: Option<i64>,
+    prompt_cache_hit_tokens: Option<i64>,
+    prompt_cache_miss_tokens: Option<i64>,
     completion_tokens: Option<i64>,
+    currency: &str,
     state: &ProxyState,
 ) -> String {
-    // Query database for dynamic price rule
-    let db_rule: Option<(String, String)> = sqlx::query_as(
-        "SELECT input_price_per_million, output_price_per_million 
+    // Query database for dynamic price rule, matching both model and currency
+    let db_rule: Option<(String, Option<String>, String)> = sqlx::query_as(
+        "SELECT input_price_per_million, cache_hit_input_price_per_million, output_price_per_million 
          FROM price_rules 
-         WHERE provider = 'deepseek' AND model = ?1 
+         WHERE provider = 'deepseek' AND model = ?1 AND currency = ?2
          LIMIT 1"
     )
     .bind(model)
+    .bind(currency)
     .fetch_optional(state.db.pool())
     .await
     .ok()
     .flatten();
 
-    let (input_price, output_price) = if let Some((input_str, output_str)) = db_rule {
+    let (input_price, cache_hit_price, output_price) = if let Some((input_str, cache_hit_str, output_str)) = db_rule {
         (
             input_str.parse::<f64>().unwrap_or(1.0),
+            cache_hit_str.and_then(|s| s.parse::<f64>().ok()).unwrap_or(input_str.parse::<f64>().unwrap_or(1.0) * 0.5),
             output_str.parse::<f64>().unwrap_or(2.0),
         )
     } else {
-        // Fallback pricing
-        let input = match model {
-            "deepseek-chat" => 1.0,
-            "deepseek-coder" => 1.0,
-            "deepseek-reasoner" => 4.0,
-            _ => 1.0,
+        // Fallback pricing based on currency (CNY vs USD)
+        let is_usd = currency == "USD";
+        let (input, cache_hit, output) = match model {
+            "deepseek-chat" | "deepseek-v4-flash" => {
+                if is_usd { (0.14, 0.07, 0.28) } else { (1.0, 0.5, 2.0) }
+            }
+            "deepseek-coder" => {
+                if is_usd { (0.14, 0.07, 0.28) } else { (1.0, 0.5, 2.0) }
+            }
+            "deepseek-reasoner" | "deepseek-v4-pro" => {
+                if is_usd { (0.55, 0.14, 2.19) } else { (4.0, 1.0, 16.0) }
+            }
+            _ => {
+                if is_usd { (0.14, 0.07, 0.28) } else { (1.0, 0.5, 2.0) }
+            }
         };
-        let output = match model {
-            "deepseek-chat" => 2.0,
-            "deepseek-coder" => 2.0,
-            "deepseek-reasoner" => 16.0,
-            _ => 2.0,
-        };
-        (input, output)
+        (input, cache_hit, output)
     };
 
-    let input_cost = prompt_tokens.unwrap_or(0) as f64 / 1_000_000.0 * input_price;
+    // Calculate prompt cost separating cache hit and miss tokens
+    let hit_tokens = prompt_cache_hit_tokens.unwrap_or(0);
+    let miss_tokens = prompt_cache_miss_tokens.unwrap_or_else(|| {
+        // Fallback if miss_tokens is not provided but prompt_tokens is
+        let total_prompt = prompt_tokens.unwrap_or(0);
+        (total_prompt - hit_tokens).max(0)
+    });
+
+    let input_cost = (miss_tokens as f64 / 1_000_000.0 * input_price) 
+        + (hit_tokens as f64 / 1_000_000.0 * cache_hit_price);
+    
     let output_cost = completion_tokens.unwrap_or(0) as f64 / 1_000_000.0 * output_price;
     let total = input_cost + output_cost;
 

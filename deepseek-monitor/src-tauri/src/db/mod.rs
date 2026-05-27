@@ -70,6 +70,37 @@ impl Database {
                 .await?;
         }
 
+        // Self-healing migration: Seed new CNY/USD pricing rules if they don't exist
+        let new_rules = vec![
+            ("price-cny-chat", "deepseek", "deepseek-chat", "CNY", "1.00", "0.50", "2.00"),
+            ("price-cny-coder", "deepseek", "deepseek-coder", "CNY", "1.00", "0.50", "2.00"),
+            ("price-cny-reasoner", "deepseek", "deepseek-reasoner", "CNY", "4.00", "1.00", "16.00"),
+            ("price-cny-v4-flash", "deepseek", "deepseek-v4-flash", "CNY", "0.50", "0.10", "1.00"),
+            ("price-cny-v4-pro", "deepseek", "deepseek-v4-pro", "CNY", "2.00", "1.00", "8.00"),
+            ("price-usd-chat", "deepseek", "deepseek-chat", "USD", "0.14", "0.07", "0.28"),
+            ("price-usd-coder", "deepseek", "deepseek-coder", "USD", "0.14", "0.07", "0.28"),
+            ("price-usd-reasoner", "deepseek", "deepseek-reasoner", "USD", "0.55", "0.14", "2.19"),
+            ("price-usd-v4-flash", "deepseek", "deepseek-v4-flash", "USD", "0.07", "0.015", "0.14"),
+            ("price-usd-v4-pro", "deepseek", "deepseek-v4-pro", "USD", "0.28", "0.14", "1.10"),
+        ];
+
+        for rule in new_rules {
+            sqlx::query(
+                "INSERT OR IGNORE INTO price_rules 
+                 (id, provider, model, currency, input_price_per_million, cache_hit_input_price_per_million, output_price_per_million, effective_from, created_at, updated_at) 
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, '2024-01-01', datetime('now'), datetime('now'))"
+            )
+            .bind(rule.0)
+            .bind(rule.1)
+            .bind(rule.2)
+            .bind(rule.3)
+            .bind(rule.4)
+            .bind(rule.5)
+            .bind(rule.6)
+            .execute(&self.pool)
+            .await?;
+        }
+
         Ok(())
     }
 
@@ -79,11 +110,17 @@ impl Database {
 }
 
 pub fn get_db_path() -> PathBuf {
-    // Use a local directory in the project folder for development
-    // This avoids permission issues with system directories
-    let app_dir = std::env::current_dir()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."))
-        .join("data");
+    let app_dir = if cfg!(debug_assertions) {
+        // Development mode: Use a local directory in the project folder
+        std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."))
+            .join("data")
+    } else {
+        // Production mode: Use standard system AppData/Application Support directory
+        dirs::data_dir()
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from(".")))
+            .join("com.deepseek.monitor")
+    };
     
     std::fs::create_dir_all(&app_dir).ok();
     app_dir.join("deepseek_monitor.db")

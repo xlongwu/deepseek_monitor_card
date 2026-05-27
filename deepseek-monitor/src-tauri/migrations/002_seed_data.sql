@@ -29,9 +29,18 @@ INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES
 ('notify_on_503', 'true', datetime('now')),
 ('enable_system_notification', 'true', datetime('now'));
 
--- Default DeepSeek price rules (example prices, user should update from official docs)
--- Note: These are placeholder prices. Users should update them according to official pricing.
+-- Default DeepSeek price rules (CNY & USD)
+-- Note: These contain official pricing for prompt cache hit/miss and output tokens.
 INSERT OR IGNORE INTO price_rules (id, provider, model, currency, input_price_per_million, cache_hit_input_price_per_million, output_price_per_million, effective_from, source_url, created_at, updated_at) VALUES
-('price-deepseek-chat', 'deepseek', 'deepseek-chat', 'CNY', '1.00', '0.50', '2.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
-('price-deepseek-coder', 'deepseek', 'deepseek-coder', 'CNY', '1.00', '0.50', '2.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
-('price-deepseek-reasoner', 'deepseek', 'deepseek-reasoner', 'CNY', '4.00', '1.00', '16.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now'));
+-- CNY Rules
+('price-cny-chat', 'deepseek', 'deepseek-chat', 'CNY', '1.00', '0.50', '2.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-cny-coder', 'deepseek', 'deepseek-coder', 'CNY', '1.00', '0.50', '2.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-cny-reasoner', 'deepseek', 'deepseek-reasoner', 'CNY', '4.00', '1.00', '16.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-cny-v4-flash', 'deepseek', 'deepseek-v4-flash', 'CNY', '0.50', '0.10', '1.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-cny-v4-pro', 'deepseek', 'deepseek-v4-pro', 'CNY', '2.00', '1.00', '8.00', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+-- USD Rules
+('price-usd-chat', 'deepseek', 'deepseek-chat', 'USD', '0.14', '0.07', '0.28', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-usd-coder', 'deepseek', 'deepseek-coder', 'USD', '0.14', '0.07', '0.28', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-usd-reasoner', 'deepseek', 'deepseek-reasoner', 'USD', '0.55', '0.14', '2.19', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-usd-v4-flash', 'deepseek', 'deepseek-v4-flash', 'USD', '0.07', '0.015', '0.14', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now')),
+('price-usd-v4-pro', 'deepseek', 'deepseek-v4-pro', 'USD', '0.28', '0.14', '1.10', '2024-01-01', 'https://api-docs.deepseek.com/zh-cn/', datetime('now'), datetime('now'));

@@ -19,8 +19,8 @@ impl UsageAggregator {
               request_started_at, request_finished_at, duration_ms, status_code, success, stream,
               prompt_tokens, completion_tokens, total_tokens, 
               prompt_cache_hit_tokens, prompt_cache_miss_tokens, reasoning_tokens,
-              estimated_cost, currency, usage_captured, usage_missing_reason)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23)"
+              estimated_cost, currency, usage_captured, usage_missing_reason, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24)"
         )
         .bind(&log.id)
         .bind(&log.api_key_id)
@@ -45,6 +45,7 @@ impl UsageAggregator {
         .bind(&log.currency)
         .bind(log.usage_captured)
         .bind(&log.usage_missing_reason)
+        .bind(Utc::now().to_rfc3339())
         .execute(&self.pool)
         .await?;
 
