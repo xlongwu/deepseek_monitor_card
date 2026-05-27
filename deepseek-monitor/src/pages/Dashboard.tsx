@@ -27,6 +27,7 @@ import {
   acknowledgeAlert,
   refreshBalance,
   getSettings,
+  toggleMiniWindow,
 } from '../services/tauri';
 import type { DashboardSummary, AlertEvent, AppSettings } from '../types';
 
@@ -294,6 +295,13 @@ export default function Dashboard() {
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">DeepSeek API 余额监控</h1>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => toggleMiniWindow(true)}
+            className="rounded-full border border-white/70 bg-white/60 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur-xl transition hover:bg-white hover:shadow flex items-center gap-1.5"
+          >
+            <Activity className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
+            打开悬浮窗
+          </button>
           <button
             onClick={() => setCompact((v) => !v)}
             className="rounded-full border border-white/70 bg-white/60 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm backdrop-blur-xl transition hover:bg-white hover:shadow"

@@ -1,4 +1,4 @@
-use tauri::{command, State};
+use tauri::{command, State, Manager};
 use anyhow::Result;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -381,3 +381,30 @@ pub async fn export_usage(
         _ => Err("Unsupported format".to_string()),
     }
 }
+
+#[command]
+pub async fn toggle_mini_window(app_handle: tauri::AppHandle, show: bool) -> Result<(), String> {
+    if let Some(window) = app_handle.get_webview_window("mini") {
+        if show {
+            window.show().map_err(|e| e.to_string())?;
+            window.set_focus().map_err(|e| e.to_string())?;
+        } else {
+            window.hide().map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[command]
+pub async fn toggle_main_window(app_handle: tauri::AppHandle, show: bool) -> Result<(), String> {
+    if let Some(window) = app_handle.get_webview_window("main") {
+        if show {
+            window.show().map_err(|e| e.to_string())?;
+            window.set_focus().map_err(|e| e.to_string())?;
+        } else {
+            window.hide().map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+

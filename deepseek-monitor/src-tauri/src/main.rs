@@ -108,6 +108,13 @@ async fn main() -> anyhow::Result<()> {
                 true,
                 None::<&str>,
             )?;
+            let toggle_mini_i = tauri::menu::MenuItem::with_id(
+                &handle,
+                "toggle_mini",
+                "显示/隐藏悬浮小组件",
+                true,
+                None::<&str>,
+            )?;
             let refresh_i = tauri::menu::MenuItem::with_id(
                 &handle,
                 "refresh",
@@ -127,6 +134,7 @@ async fn main() -> anyhow::Result<()> {
                 &handle,
                 &[
                     &show_i,
+                    &toggle_mini_i,
                     &refresh_i,
                     &tauri::menu::PredefinedMenuItem::separator(&handle)?,
                     &quit_i,
@@ -142,6 +150,16 @@ async fn main() -> anyhow::Result<()> {
                         if let Some(window) = app.get_webview_window("main") {
                             let _ = window.show();
                             let _ = window.set_focus();
+                        }
+                    }
+                    "toggle_mini" => {
+                        if let Some(window) = app.get_webview_window("mini") {
+                            if window.is_visible().unwrap_or(false) {
+                                let _ = window.hide();
+                            } else {
+                                let _ = window.show();
+                                let _ = window.set_focus();
+                            }
                         }
                     }
                     "refresh" => {
@@ -193,6 +211,8 @@ async fn main() -> anyhow::Result<()> {
             commands::set_settings,
             commands::refresh_balance,
             commands::export_usage,
+            commands::toggle_mini_window,
+            commands::toggle_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

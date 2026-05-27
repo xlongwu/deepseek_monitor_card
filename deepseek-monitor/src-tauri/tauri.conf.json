@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "DeepSeek Monitor",
         "width": 860,
         "height": 620,
@@ -20,6 +21,20 @@
         "resizable": true,
         "fullscreen": false,
         "center": true
+      },
+      {
+        "label": "mini",
+        "title": "DeepSeek Monitor Mini",
+        "width": 320,
+        "height": 220,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visible": false,
+        "center": false,
+        "url": "index.html#/mini"
       }
     ],
     "security": {

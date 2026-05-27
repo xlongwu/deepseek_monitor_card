@@ -175,3 +175,11 @@ export async function exportUsage(format: string, range: TimeRange): Promise<str
     return JSON.stringify([], null, 2);
   });
 }
+
+export async function toggleMiniWindow(show: boolean): Promise<void> {
+  return invokeCommand('toggle_mini_window', { show }, () => undefined);
+}
+
+export async function toggleMainWindow(show: boolean): Promise<void> {
+  return invokeCommand('toggle_main_window', { show }, () => undefined);
+}
