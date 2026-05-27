@@ -38,7 +38,6 @@ impl BalancePoller {
         }
     }
 
-    #[allow(dead_code)]
     pub async fn start(&self) {
         let mut consecutive_errors = 0u32;
         let mut current_interval_secs;
@@ -48,27 +47,38 @@ impl BalancePoller {
             current_interval_secs = settings.balance_refresh_interval_seconds;
             drop(settings);
 
+            // If interval is 0 or negative, auto background polling is disabled (manual-only).
+            // We sleep for a short duration and check settings again later.
+            if current_interval_secs <= 0 {
+                sleep(Duration::from_secs(10)).await;
+                continue;
+            }
+
+            // Sleep FIRST before performing the actual network API query.
+            // This ensures that:
+            // 1. On startup, we load the fast cached snapshot from SQLite instead of hitting the API instantly.
+            // 2. We respect the configured polling interval sequence.
+            sleep(Duration::from_secs(current_interval_secs as u64)).await;
+
             match self.poll_balance().await {
                 Ok(snapshot) => {
                     consecutive_errors = 0;
                     let mut last = self.last_snapshot.write().await;
                     *last = Some(snapshot);
-                    info!("Balance refreshed successfully");
+                    info!("Balance refreshed successfully in background loop");
                 }
                 Err(e) => {
                     consecutive_errors += 1;
                     let backoff_secs = std::cmp::min(
-                        current_interval_secs * (2_i64.pow(consecutive_errors.min(5))),
+                        current_interval_secs.max(10) * (2_i64.pow(consecutive_errors.min(5))),
                         300
                     );
-                    warn!("Balance poll failed (attempt {}): {}. Backing off for {}s", 
+                    warn!("Balance background poll failed (attempt {}): {}. Backing off for {}s", 
                           consecutive_errors, e, backoff_secs);
                     sleep(Duration::from_secs(backoff_secs as u64)).await;
                     continue;
                 }
             }
-
-            sleep(Duration::from_secs(current_interval_secs as u64)).await;
         }
     }
 

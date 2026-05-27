@@ -73,10 +73,11 @@ async fn main() -> anyhow::Result<()> {
         app_settings: app_settings.clone(),
     };
 
-    // Load last balance snapshot from database on startup
+    // Load last balance snapshot from database on startup and start background poller loop
     let poller_clone = balance_poller.clone();
     tokio::spawn(async move {
         let _ = poller_clone.load_last_snapshot_from_db().await;
+        poller_clone.start().await;
     });
 
     if settings.proxy_enabled {

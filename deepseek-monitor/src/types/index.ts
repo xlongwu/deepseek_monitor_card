@@ -4,7 +4,7 @@ export interface ApiKeyMeta {
   provider: string;
   key_fingerprint: string;
   currency?: string;
-  is_active: boolean;
+  is_active: number;
   created_at: string;
   updated_at: string;
 }

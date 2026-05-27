@@ -120,6 +120,12 @@ pub async fn save_api_key(
     
     let keychain_ref = KeychainService::generate_keychain_ref(&key_id);
     
+    // First, set all other keys to is_active = 0 in database
+    sqlx::query("UPDATE api_keys SET is_active = 0")
+        .execute(state.db.pool())
+        .await
+        .map_err(|e| e.to_string())?;
+    
     sqlx::query(
         "INSERT INTO api_keys (id, alias, provider, key_fingerprint, keychain_ref, is_active, created_at, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)"
@@ -129,7 +135,7 @@ pub async fn save_api_key(
     .bind("deepseek")
     .bind(&fingerprint)
     .bind(&keychain_ref)
-    .bind(1i32)
+    .bind(1i32) // Set new key to active
     .bind(chrono::Utc::now().to_rfc3339())
     .bind(chrono::Utc::now().to_rfc3339())
     .execute(state.db.pool())
@@ -144,9 +150,10 @@ pub async fn save_api_key(
 
 #[command]
 pub async fn list_api_keys(state: State<'_, AppState>) -> Result<Vec<ApiKeyMeta>, String> {
+    // Return all keys, sorted by creation time
     let keys: Vec<ApiKeyMeta> = sqlx::query_as(
         "SELECT id, alias, provider, key_fingerprint, currency, is_active, created_at, updated_at
-         FROM api_keys WHERE is_active = 1"
+         FROM api_keys ORDER BY created_at DESC"
     )
     .fetch_all(state.db.pool())
     .await
@@ -160,24 +167,36 @@ pub async fn delete_api_key(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
-    state.keychain.delete_api_key(&id)
-        .map_err(|e| e.to_string())?;
+    // Attempt keychain deletion first
+    let _ = state.keychain.delete_api_key(&id);
     
-    sqlx::query("UPDATE api_keys SET is_active = 0 WHERE id = ?1")
+    // Physically delete key from database
+    sqlx::query("DELETE FROM api_keys WHERE id = ?1")
         .bind(&id)
         .execute(state.db.pool())
-    .await
-    .map_err(|e| e.to_string())?;
+        .await
+        .map_err(|e| e.to_string())?;
 
     let mut active_id = state.active_api_key_id.write().await;
     if *active_id == id {
-        *active_id = sqlx::query_scalar::<_, String>(
-            "SELECT id FROM api_keys WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"
+        // Find another key to activate if any exist
+        let next_active = sqlx::query_scalar::<_, String>(
+            "SELECT id FROM api_keys ORDER BY created_at DESC LIMIT 1"
         )
         .fetch_optional(state.db.pool())
         .await
-        .map_err(|e| e.to_string())?
-        .unwrap_or_default();
+        .map_err(|e| e.to_string())?;
+        
+        if let Some(next_id) = next_active {
+            sqlx::query("UPDATE api_keys SET is_active = 1 WHERE id = ?1")
+                .bind(&next_id)
+                .execute(state.db.pool())
+                .await
+                .map_err(|e| e.to_string())?;
+            *active_id = next_id;
+        } else {
+            *active_id = String::new();
+        }
     }
     
     Ok(())
@@ -188,8 +207,35 @@ pub async fn set_active_api_key(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<(), String> {
+    // Check if the key exists
+    let key_exists = sqlx::query_scalar::<_, i32>(
+        "SELECT COUNT(*) FROM api_keys WHERE id = ?1"
+    )
+    .bind(&id)
+    .fetch_one(state.db.pool())
+    .await
+    .map_err(|e| e.to_string())? > 0;
+    
+    if !key_exists {
+        return Err("API Key not found".to_string());
+    }
+
+    // Set all other keys to inactive
+    sqlx::query("UPDATE api_keys SET is_active = 0")
+        .execute(state.db.pool())
+        .await
+        .map_err(|e| e.to_string())?;
+        
+    // Set the selected key to active
+    sqlx::query("UPDATE api_keys SET is_active = 1 WHERE id = ?1")
+        .bind(&id)
+        .execute(state.db.pool())
+        .await
+        .map_err(|e| e.to_string())?;
+
     let mut active_id = state.active_api_key_id.write().await;
     *active_id = id;
+    
     Ok(())
 }
 

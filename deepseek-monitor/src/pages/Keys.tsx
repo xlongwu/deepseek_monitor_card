@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../stores/appStore';
-import { listApiKeys, saveApiKey, deleteApiKey } from '../services/tauri';
+import { listApiKeys, saveApiKey, deleteApiKey, setActiveApiKey } from '../services/tauri';
 
 export default function Keys() {
   const { apiKeys, setApiKeys } = useAppStore();
@@ -50,6 +50,15 @@ export default function Keys() {
     }
   }
 
+  async function handleSetActiveKey(id: string) {
+    try {
+      await setActiveApiKey(id);
+      await loadKeys();
+    } catch (error) {
+      console.error('Failed to set active API key:', error);
+    }
+  }
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
@@ -59,7 +68,7 @@ export default function Keys() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer"
         >
           添加 Key
         </button>
@@ -80,16 +89,33 @@ export default function Keys() {
             <tbody className="divide-y divide-gray-200">
               {apiKeys.map((key) => (
                 <tr key={key.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900">{key.alias}</td>
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <div className="flex items-center space-x-2">
+                      <span>{key.alias}</span>
+                      {key.is_active === 1 && (
+                        <span className="px-2 py-0.5 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full">
+                          当前活动
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-500 font-mono">{key.key_fingerprint}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{key.provider}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {new Date(key.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-sm">
+                  <td className="px-6 py-4 text-sm font-medium space-x-3">
+                    {key.is_active !== 1 && (
+                      <button
+                        onClick={() => handleSetActiveKey(key.id)}
+                        className="text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                      >
+                        设为活动
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteKey(key.id)}
-                      className="text-red-600 hover:text-red-800 transition-colors"
+                      className="text-red-600 hover:text-red-800 transition-colors cursor-pointer"
                     >
                       删除
                     </button>
