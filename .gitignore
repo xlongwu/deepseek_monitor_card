@@ -1,0 +1,29 @@
+# Node
+node_modules/
+deepseek-monitor/node_modules/
+deepseek-monitor/dist/
+deepseek-monitor/.env
+
+# Rust / Cargo
+deepseek-monitor/src-tauri/target/
+target/
+
+# Local SQLite databases, caches and logs
+deepseek-monitor/src-tauri/data/
+deepseek-monitor/src-tauri/deepseek_monitor.db
+deepseek-monitor/data/
+data/
+*.db
+*.db-journal
+*.log
+
+# IDEs & System
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

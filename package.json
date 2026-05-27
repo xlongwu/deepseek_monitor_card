@@ -1,0 +1,13 @@
+{
+  "name": "deepseek-api-desktop-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix deepseek-monitor",
+    "build": "npm run build --prefix deepseek-monitor",
+    "tauri": "npm run tauri --prefix deepseek-monitor",
+    "tauri:dev": "npm run tauri:dev --prefix deepseek-monitor",
+    "tauri:build": "npm run tauri:build --prefix deepseek-monitor",
+    "tauri:bundle": "npm run tauri:bundle --prefix deepseek-monitor"
+  }
+}
