@@ -54,28 +54,67 @@
 
 ## ⚙️ 环境要求 (Prerequisites)
 
-### 1. 通用依赖 (General Dependencies)
+> [!IMPORTANT]
+> **在编译或启动本项目前，请务必先确认您的系统已安装了 Rust 编译环境（`cargo` & `rustc`）！**  
+> 如果未安装 Rust，在运行开发或构建指令（如 `npm run tauri:dev`）时会报错。
+
+### 1. 🔍 环境快速预检 (Environment Pre-check)
+请在您的终端/命令行中运行以下指令检查是否已安装 Rust：
+```bash
+rustc --version
+```
+* **如果输出版本号**（例如 `rustc 1.77.2 ...`），说明 Rust 环境正常，可跳过下方安装步骤！
+* **如果提示命令不存在**（`command not found` 或 `无法识别`），请根据您的操作系统执行下方的安装指引。
+
+---
+
+### 2. 🛠️ Rust 编译器安装指引 (Rust Installation Guide)
+
+#### 🪟 Windows 用户安装：
+1. 访问 Rust 官方安装程序下载页面：[https://rustup.rs/](https://rustup.rs/)。
+2. 下载并运行 `rustup-init.exe`。
+3. 启动安装程序后，通常会提示您安装 **Visual Studio C++ Build Tools**，请按照屏幕提示（选择默认选项 `1`）进行安装以获得完整的 C++ 编译链接器。
+4. 安装完成后，重启您的命令行窗口（PowerShell 或 CMD）即可生效。
+
+#### 🍎 macOS 用户安装：
+1. 首先，请确保安装了系统的 C 编译器和 SDK 链接器。在终端执行：
+   ```bash
+   xcode-select --install
+   ```
+   *根据系统提示点击“安装”，等待下载安装完成。*
+2. 接下来，执行以下一键安装 Rust 官方脚本：
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+3. 按照屏幕提示，默认按回车键进行安装。安装成功后，执行以下指令或重启终端以使环境生效：
+   ```bash
+   source "$HOME/.cargo/env"
+   ```
+
+#### 🐧 Linux 用户安装 (以 Ubuntu/Debian 为例)：
+1. 首先安装 Linux 系统编译所需的依赖库与 WebKit 依赖：
+   ```bash
+   sudo apt update
+   sudo apt install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+   ```
+2. 接下来，通过官方脚本安装 Rust：
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+3. 按照提示选择默认安装，安装成功后运行：
+   ```bash
+   source "$HOME/.cargo/env"
+   ```
+
+---
+
+### 3. 通用版本要求 (General Version Matrix)
 
 | 依赖 | 版本要求 | 说明 |
 |------|---------|------|
 | Node.js | >= 18 | 前端构建环境 |
 | Rust | >= 1.77.2 | 后端编译环境（安装 `rustup`） |
 | npm / pnpm | 任意 | 包管理器 |
-
-### 2. 🖥️ 平台特定开发工具 (Platform Prerequisites)
-
-* **macOS**:
-  macOS 用户必须安装 **Xcode Command Line Tools** 以获取 `clang` 编译器与系统 SDK 链接库，否则构建 Rust 后端和连接 macOS Keychain 钥匙串时会报错。
-  在终端运行以下指令安装：
-  ```bash
-  xcode-select --install
-  ```
-* **Windows**: 无需额外依赖（建议确保已安装 C++ 编译工具，即 Visual Studio Build Tools）。
-* **Linux (Ubuntu/Debian)**:
-  ```bash
-  sudo apt update
-  sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-  ```
 
 ---
 

@@ -30,32 +30,60 @@ DeepSeek API 用量与余额桌面监控组件。基于 Tauri 2.x 构建的跨�
 
 ## 环境要求
 
+> [!IMPORTANT]
+> **在编译或启动本项目前，请务必先确认您的系统已安装了 Rust 编译环境（`cargo` & `rustc`）！**  
+> 如果未安装 Rust，在运行开发或构建指令（如 `npm run tauri:dev`）时会报错。
+
+### 1. 🔍 环境快速预检
+请在您的终端/命令行中运行以下指令检查是否已安装 Rust：
+```bash
+rustc --version
+```
+* **如果输出版本号**（例如 `rustc 1.77.2 ...`），说明 Rust 环境正常，可跳过下方安装步骤！
+* **如果提示命令不存在**（`command not found`），请根据您的操作系统执行下方的安装指引。
+
+---
+
+### 2. 🛠️ Rust 编译器安装指引
+
+#### 🪟 Windows 用户安装：
+1. 访问 Rust 官方安装页面：[https://rustup.rs/](https://rustup.rs/)。
+2. 下载并运行 `rustup-init.exe`。
+3. 按照屏幕提示（选择默认选项 `1`）进行安装。如果提示缺少 **Visual Studio C++ Build Tools**，请确认并允许其自动或手动安装，以获得完整的 C++ 编译链接器。
+4. 安装完成后，重启命令行窗口即可生效。
+
+#### 🍎 macOS 用户安装：
+1. 首先，请确保安装了系统的开发工具命令行（包含编译器和 SDK 链接器）。在终端执行：
+   ```bash
+   xcode-select --install
+   ```
+2. 接下来，执行以下一键安装 Rust 官方脚本：
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+3. 按照屏幕提示安装，完成后重启终端或执行 `source "$HOME/.cargo/env"` 以使环境生效。
+
+#### 🐧 Linux 用户安装 (以 Ubuntu/Debian 为例)：
+1. 首先安装 Linux 系统编译依赖与 WebKit 依赖：
+   ```bash
+   sudo apt update
+   sudo apt install -y build-essential libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+   ```
+2. 接下来，通过官方脚本安装 Rust：
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+3. 按照提示安装，完成后执行 `source "$HOME/.cargo/env"`。
+
+---
+
+### 3. 通用版本依赖
+
 | 依赖 | 版本要求 | 说明 |
 |------|---------|------|
 | Node.js | >= 18 | 前端构建环境 |
 | Rust | >= 1.77.2 | 后端编译环境（需安装 rustup） |
 | npm / pnpm / yarn | 任意 | 包管理器 |
-
-### 平台特定依赖
-
-**macOS**:
-需要安装 **Xcode Command Line Tools** 以便 Rust 编译器能够调用 `clang` 和系统 SDK：
-```bash
-xcode-select --install
-```
-
-**Windows**: 无需额外依赖（建议确保安装了 C++ 编译工具）
-
-**Linux (Ubuntu/Debian)**:
-```bash
-sudo apt update
-sudo apt install libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-```
-
-**Linux (Fedora)**:
-```bash
-sudo dnf install gtk3-devel webkit2gtk4.1-devel libappindicator-gtk3-devel librsvg2-devel
-```
 
 ## 快速开始
 
