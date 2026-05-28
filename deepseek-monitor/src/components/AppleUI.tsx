@@ -18,11 +18,19 @@ export const GlassCard: React.FC<GlassCardProps> = ({
   className = '',
   ...props
 }) => {
+  const hasBg = className.includes('bg-');
+  const hasBorder = className.includes('border-') || className.includes('border ');
+
+  const defaultBg = hasBg ? '' : 'bg-white/55';
+  const defaultBorder = hasBorder ? '' : 'border border-white/65';
+
+  const defaultHover = hoverEffect 
+    ? `hover:shadow-2xl hover:translate-y-[-2px] ${hasBg ? '' : 'hover:bg-white/70'} ${hasBorder ? '' : 'hover:border-white/80'}`
+    : '';
+
   const cardContent = (
     <div
-      className={`bg-white/55 border border-white/65 shadow-xl shadow-slate-200/40 backdrop-blur-2xl rounded-[2rem] p-6 transition-all duration-300 ${
-        hoverEffect ? 'hover:shadow-2xl hover:translate-y-[-2px] hover:bg-white/70 hover:border-white/80' : ''
-      } ${className}`}
+      className={`${defaultBg} ${defaultBorder} shadow-xl shadow-slate-200/40 backdrop-blur-2xl rounded-[2rem] p-6 transition-all duration-300 ${defaultHover} ${className}`}
       {...props}
     >
       {children}

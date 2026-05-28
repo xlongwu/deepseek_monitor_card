@@ -120,6 +120,10 @@ export interface DashboardSummary {
   today_total_tokens: number;
   today_estimated_cost: string;
   last_hour_cost: string;
+  today_estimated_cost_cny: string;
+  today_estimated_cost_usd: string;
+  last_hour_cost_cny: string;
+  last_hour_cost_usd: string;
   proxy_status: ProxyStatus;
   last_refresh?: string;
   status: string;
@@ -144,6 +148,8 @@ export interface UsageStats {
   total_completion_tokens: number;
   total_tokens: number;
   total_estimated_cost: string;
+  total_estimated_cost_cny: string;
+  total_estimated_cost_usd: string;
   by_model: ModelStat[];
   by_source: SourceStat[];
 }

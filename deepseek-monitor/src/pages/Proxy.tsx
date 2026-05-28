@@ -72,7 +72,7 @@ export default function Proxy() {
           <GlassCard>
             <div className="flex items-center justify-between pb-3 border-b border-slate-200/40 mb-5">
               <div className="flex items-center gap-2">
-                <Activity className="h-4.5 w-4.5 text-blue-500" />
+                <Activity className="h-[18px] w-[18px] text-blue-500" />
                 <SectionTitle title="代理状态控制" subtitle="监听本地 127.0.0.1 闭合安全环回接口" />
               </div>
               <StatusPill available={running} text={running ? '代理运行中' : '服务已关停'} />
@@ -134,7 +134,7 @@ export default function Proxy() {
           {/* Code SDK Setups */}
           <GlassCard>
             <div className="flex items-center gap-2 pb-3 border-b border-slate-200/40 mb-5">
-              <Terminal className="h-4.5 w-4.5 text-slate-600" />
+              <Terminal className="h-[18px] w-[18px] text-slate-600" />
               <SectionTitle title="开发者 IDE 及大模型 SDK 注入指南" subtitle="将原有 DeepSeek 官方 Endpoint 替换为本机的安全环回代理。" />
             </div>
 
@@ -171,7 +171,7 @@ client = OpenAI(
         <div className="lg:col-span-4 flex flex-col gap-6">
           <GlassCard hoverEffect={false} className="bg-slate-50/50">
             <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200/40 mb-3">
-              <Shield className="h-4.5 w-4.5 text-blue-500" />
+              <Shield className="h-[18px] w-[18px] text-blue-500" />
               <h4 className="text-xs font-black tracking-tight text-slate-800 uppercase">环回网络安全声明</h4>
             </div>
             

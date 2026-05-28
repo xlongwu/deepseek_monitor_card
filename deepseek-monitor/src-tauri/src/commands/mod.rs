@@ -58,12 +58,43 @@ pub async fn get_dashboard_summary(state: State<'_, AppState>) -> Result<Dashboa
 
     let balance = balance_cny.clone().or(balance_usd.clone());
     
-    let (today_requests, today_prompt, today_completion, today_total, today_cost) = 
-        state.usage_aggregator.get_today_stats(&active_key_id).await
+    let default_currency: String = sqlx::query_scalar(
+        "SELECT value FROM app_settings WHERE key = 'default_currency'"
+    )
+    .fetch_one(state.db.pool())
+    .await
+    .unwrap_or_else(|_| "CNY".to_string());
+
+    let (today_requests_cny, today_prompt_cny, today_completion_cny, today_total_cny, today_cost_cny) = 
+        state.usage_aggregator.get_today_stats(&active_key_id, "CNY").await
             .map_err(|e| e.to_string())?;
+
+    let (today_requests_usd, today_prompt_usd, today_completion_usd, today_total_usd, today_cost_usd) = 
+        state.usage_aggregator.get_today_stats(&active_key_id, "USD").await
+            .map_err(|e| e.to_string())?;
+
+    let today_requests = today_requests_cny + today_requests_usd;
+    let today_prompt = today_prompt_cny + today_prompt_usd;
+    let today_completion = today_completion_cny + today_completion_usd;
+    let today_total = today_total_cny + today_total_usd;
+
+    let today_cost = if default_currency == "USD" {
+        today_cost_usd.clone()
+    } else {
+        today_cost_cny.clone()
+    };
     
-    let last_hour_cost = state.usage_aggregator.get_last_hour_cost(&active_key_id).await
+    let last_hour_cost_cny = state.usage_aggregator.get_last_hour_cost(&active_key_id, "CNY").await
         .map_err(|e| e.to_string())?;
+    
+    let last_hour_cost_usd = state.usage_aggregator.get_last_hour_cost(&active_key_id, "USD").await
+        .map_err(|e| e.to_string())?;
+
+    let last_hour_cost = if default_currency == "USD" {
+        last_hour_cost_usd.clone()
+    } else {
+        last_hour_cost_cny.clone()
+    };
     
     let proxy_status = state.proxy.get_status().await
         .map_err(|e| e.to_string())?;
@@ -75,7 +106,7 @@ pub async fn get_dashboard_summary(state: State<'_, AppState>) -> Result<Dashboa
     };
 
     Ok(DashboardSummary {
-        balance,
+        balance: balance.clone(),
         balance_cny,
         balance_usd,
         today_requests,
@@ -84,8 +115,12 @@ pub async fn get_dashboard_summary(state: State<'_, AppState>) -> Result<Dashboa
         today_total_tokens: today_total,
         today_estimated_cost: today_cost,
         last_hour_cost,
+        today_estimated_cost_cny: today_cost_cny,
+        today_estimated_cost_usd: today_cost_usd,
+        last_hour_cost_cny,
+        last_hour_cost_usd,
         proxy_status,
-        last_refresh: Some(chrono::Utc::now().to_rfc3339()),
+        last_refresh: balance.as_ref().map(|b| b.captured_at.clone()),
         status,
     })
 }
@@ -102,7 +137,15 @@ pub async fn get_usage_stats(
     range: TimeRange,
 ) -> Result<UsageStats, String> {
     let active_key_id = state.active_api_key_id.read().await.clone();
-    state.usage_aggregator.get_usage_stats(&active_key_id, &range).await
+    
+    let default_currency: String = sqlx::query_scalar(
+        "SELECT value FROM app_settings WHERE key = 'default_currency'"
+    )
+    .fetch_one(state.db.pool())
+    .await
+    .unwrap_or_else(|_| "CNY".to_string());
+
+    state.usage_aggregator.get_usage_stats(&active_key_id, &range, &default_currency).await
         .map_err(|e| e.to_string())
 }
 

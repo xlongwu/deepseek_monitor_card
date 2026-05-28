@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS daily_usage (
     estimated_cost TEXT,
     currency TEXT,
     updated_at TEXT NOT NULL,
-    UNIQUE(api_key_id, usage_date, source_name, model)
+    UNIQUE(api_key_id, usage_date, source_name, model, currency)
 );
 
 -- Price rules for cost estimation

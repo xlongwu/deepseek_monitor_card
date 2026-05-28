@@ -47,6 +47,12 @@ function formatMoney(value: number | string | undefined, currency = 'CNY') {
   }).format(n);
 }
 
+function formatCombinedCost(cny: string | number | undefined, usd: string | number | undefined) {
+  const cnyVal = Number(cny || 0);
+  const usdVal = Number(usd || 0);
+  return `${formatMoney(cnyVal, 'CNY')} / ${formatMoney(usdVal, 'USD')}`;
+}
+
 function formatTime(value?: string) {
   if (!value) return '尚未刷新';
   return new Intl.DateTimeFormat('zh-CN', {
@@ -60,9 +66,11 @@ export default function Dashboard() {
   const [dashboard, setDashboard] = useState<DashboardSummary | null>(null);
   const [alerts, setAlerts] = useState<AlertEvent[]>([]);
   const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [dailyStats, setDailyStats] = useState<{ date: string; cost: number }[]>([]);
-  const [yesterdayCost, setYesterdayCost] = useState<number>(0);
-  const [sevenDayAvg, setSevenDayAvg] = useState<number>(0);
+  const [dailyStats, setDailyStats] = useState<{ date: string; costCny: number; costUsd: number }[]>([]);
+  const [yesterdayCostCny, setYesterdayCostCny] = useState<number>(0);
+  const [yesterdayCostUsd, setYesterdayCostUsd] = useState<number>(0);
+  const [sevenDayAvgCny, setSevenDayAvgCny] = useState<number>(0);
+  const [sevenDayAvgUsd, setSevenDayAvgUsd] = useState<number>(0);
 
   const [hidden, setHidden] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,21 +117,23 @@ export default function Dashboard() {
           getUsageStats(item.range)
             .then((res) => ({
               date: item.dateStr,
-              cost: Number(res.total_estimated_cost || 0),
+              costCny: Number(res.total_estimated_cost_cny || 0),
+              costUsd: Number(res.total_estimated_cost_usd || 0),
             }))
-            .catch(() => ({ date: item.dateStr, cost: 0 }))
+            .catch(() => ({ date: item.dateStr, costCny: 0, costUsd: 0 }))
         )
       );
       setDailyStats(dailyData);
 
       // Calculate Yesterday's cost
-      const yCost = dailyData[5]?.cost ?? 0;
-      setYesterdayCost(yCost);
+      setYesterdayCostCny(dailyData[5]?.costCny ?? 0);
+      setYesterdayCostUsd(dailyData[5]?.costUsd ?? 0);
 
       // Calculate 7-day average
-      const total7Days = dailyData.reduce((acc, curr) => acc + curr.cost, 0);
-      const avg = total7Days / 7;
-      setSevenDayAvg(avg);
+      const total7DaysCny = dailyData.reduce((acc, curr) => acc + curr.costCny, 0);
+      const total7DaysUsd = dailyData.reduce((acc, curr) => acc + curr.costUsd, 0);
+      setSevenDayAvgCny(total7DaysCny / 7);
+      setSevenDayAvgUsd(total7DaysUsd / 7);
 
     } catch (err) {
       console.error(err);
@@ -160,12 +170,13 @@ export default function Dashboard() {
   const balanceUsd = dashboard?.balance_usd;
 
   const total = balanceCny ? Number(balanceCny.total_balance) : (balanceUsd ? Number(balanceUsd.total_balance) : Number(balance?.total_balance || 0));
-  const granted = balanceCny ? Number(balanceCny.granted_balance) : (balanceUsd ? Number(balanceUsd.granted_balance) : Number(balance?.granted_balance || 0));
-  const toppedUp = balanceCny ? Number(balanceCny.topped_up_balance) : (balanceUsd ? Number(balanceUsd.topped_up_balance) : Number(balance?.topped_up_balance || 0));
   const currency = balanceCny ? 'CNY' : (balanceUsd ? 'USD' : (balance?.currency || 'CNY'));
+  const displayCurrency = settings?.default_currency || currency;
 
   const lowBalanceThreshold = Number(settings?.low_balance_threshold || '10.00');
   const isLowBalance = total < lowBalanceThreshold;
+
+  const sevenDayAvg = displayCurrency === 'USD' ? sevenDayAvgUsd : sevenDayAvgCny;
 
   const estimatedDays = useMemo(() => {
     if (sevenDayAvg <= 0) return 99.9;
@@ -173,9 +184,10 @@ export default function Dashboard() {
   }, [total, sevenDayAvg]);
 
   const usageBars = useMemo(() => {
-    const maxCost = Math.max(...dailyStats.map((d) => d.cost), 0.01);
-    return dailyStats.map((d) => (d.cost / maxCost) * 100);
-  }, [dailyStats]);
+    const costs = dailyStats.map((d) => displayCurrency === 'USD' ? d.costUsd : d.costCny);
+    const maxCost = Math.max(...costs, 0.01);
+    return costs.map((c) => (c / maxCost) * 100);
+  }, [dailyStats, displayCurrency]);
 
   const displayEvents = useMemo(() => {
     if (alerts.length > 0) {
@@ -251,7 +263,7 @@ export default function Dashboard() {
 
       {error && (
         <div className="mb-6 p-4 rounded-2xl border border-rose-500/25 bg-rose-500/10 text-rose-700 text-xs font-semibold flex items-center gap-2">
-          <AlertTriangle className="h-4.5 w-4.5 shrink-0" />
+          <AlertTriangle className="h-[18px] w-[18px] shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -260,10 +272,10 @@ export default function Dashboard() {
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Left Side: Balance Widget (Mac Widget Style) */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-          <GlassCard hoverEffect={true} className="relative flex flex-col justify-between h-[360px] bg-slate-900/90 text-white border-none shadow-2xl shadow-slate-900/20 overflow-hidden">
+          <GlassCard hoverEffect={true} className="relative flex flex-col justify-between h-[360px] overflow-hidden border border-white/80 shadow-2xl shadow-slate-100/40">
             {/* Background gradient decorative glow */}
-            <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-blue-500/20 blur-3xl" />
-            <div className="pointer-events-none absolute -left-20 -bottom-20 h-44 w-44 rounded-full bg-emerald-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute -right-20 -top-20 h-44 w-44 rounded-full bg-blue-500/10 blur-3xl" />
+            <div className="pointer-events-none absolute -left-20 -bottom-20 h-44 w-44 rounded-full bg-emerald-500/5 blur-3xl" />
 
             <div className="z-10 flex items-start justify-between">
               <div className="flex items-center gap-2">
@@ -271,47 +283,75 @@ export default function Dashboard() {
                   <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
-                  <h2 className="text-xs font-extrabold tracking-wider text-slate-300 uppercase">DeepSeek Wallet</h2>
-                  <p className="text-[9px] text-slate-400 mt-0.5">多币种自愈轮询</p>
+                  <h2 className="text-xs font-extrabold tracking-wider text-slate-800 uppercase">DeepSeek Wallet</h2>
+                  <p className="text-[9px] text-slate-500 mt-0.5">多币种自愈轮询</p>
                 </div>
               </div>
               <button
                 onClick={() => setHidden((v) => !v)}
-                className="grid h-7 w-7 place-items-center rounded-full bg-white/10 text-slate-300 transition hover:bg-white/20 hover:text-white"
+                className="grid h-7 w-7 place-items-center rounded-full bg-slate-100/80 text-slate-500 transition hover:bg-slate-200/80 hover:text-slate-800"
               >
                 {hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
               </button>
             </div>
 
             <div className="z-10 my-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">账户可用总额</p>
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">账户可用总额</p>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-3xl font-black tracking-tight text-white">
+                <span className="text-3xl font-black tracking-tight text-slate-800">
                   {hidden ? '••••••' : formatMoney(balanceCny?.total_balance, 'CNY')}
                 </span>
-                <span className="text-sm font-semibold text-slate-400">
+                <span className="text-sm font-bold text-slate-400">
                   / {hidden ? '••••' : formatMoney(balanceUsd?.total_balance, 'USD')}
                 </span>
               </div>
               
               <div className="mt-1.5 flex items-center gap-1.5">
-                <StatusPill available={dashboard?.balance?.is_available ?? false} className="border-white/10 text-emerald-400 font-bold" />
-                <span className="text-[9px] text-slate-400 font-medium">上次同步: {formatTime(dashboard?.last_refresh)}</span>
+                <StatusPill available={dashboard?.balance?.is_available ?? false} className="border-slate-200/50 text-emerald-600 font-bold" />
+                <span className="text-[9px] text-slate-500 font-medium">上次同步: {formatTime(dashboard?.last_refresh)}</span>
               </div>
             </div>
 
-            <div className="z-10 grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
+            <div className="z-10 grid grid-cols-2 gap-3 pt-3 border-t border-slate-200/40">
               <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase">充值余额</p>
-                <p className="text-sm font-bold text-white mt-0.5">
-                  {hidden ? '•••' : formatMoney(toppedUp, currency)}
-                </p>
+                <p className="text-[9px] font-black text-slate-500 uppercase">充值余额</p>
+                <div className="mt-0.5 flex flex-col">
+                  {balanceCny && (
+                    <span className="text-xs font-bold text-slate-800">
+                      {hidden ? '•••' : formatMoney(balanceCny.topped_up_balance, 'CNY')}
+                    </span>
+                  )}
+                  {balanceUsd && (
+                    <span className="text-[10px] font-semibold text-slate-500">
+                      {hidden ? '•••' : formatMoney(balanceUsd.topped_up_balance, 'USD')}
+                    </span>
+                  )}
+                  {!balanceCny && !balanceUsd && (
+                    <span className="text-xs font-bold text-slate-400">
+                      {hidden ? '•••' : formatMoney(0, 'CNY')}
+                    </span>
+                  )}
+                </div>
               </div>
               <div>
-                <p className="text-[9px] font-black text-slate-400 uppercase">赠送余额</p>
-                <p className="text-sm font-bold text-slate-400 mt-0.5">
-                  {hidden ? '•••' : formatMoney(granted, currency)}
-                </p>
+                <p className="text-[9px] font-black text-slate-500 uppercase">赠送余额</p>
+                <div className="mt-0.5 flex flex-col">
+                  {balanceCny && (
+                    <span className="text-xs font-bold text-slate-800">
+                      {hidden ? '•••' : formatMoney(balanceCny.granted_balance, 'CNY')}
+                    </span>
+                  )}
+                  {balanceUsd && (
+                    <span className="text-[10px] font-semibold text-slate-500">
+                      {hidden ? '•••' : formatMoney(balanceUsd.granted_balance, 'USD')}
+                    </span>
+                  )}
+                  {!balanceCny && !balanceUsd && (
+                    <span className="text-xs font-bold text-slate-400">
+                      {hidden ? '•••' : formatMoney(0, 'CNY')}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </GlassCard>
@@ -328,7 +368,7 @@ export default function Dashboard() {
               <div>
                 <h4 className="text-xs font-bold text-slate-800">本地安全雷达</h4>
                 <p className="text-[10px] text-slate-400 mt-1 font-semibold">
-                  {isLowBalance ? `余额低于阈值 (${formatMoney(lowBalanceThreshold, currency)})，请注意额度。` : "API 代理及额度防护正常运行。"}
+                  {isLowBalance ? `余额低于阈值 (${formatMoney(lowBalanceThreshold, displayCurrency)})，请注意额度。` : "API 代理及额度防护正常运行。"}
                 </p>
               </div>
             </div>
@@ -342,20 +382,20 @@ export default function Dashboard() {
             <MetricCard
               icon={TrendingUp}
               label="今日预估消费"
-              value={formatMoney(dashboard?.today_estimated_cost || 0, currency)}
+              value={formatCombinedCost(dashboard?.today_estimated_cost_cny, dashboard?.today_estimated_cost_usd)}
               sub="基于捕获的 API 调用"
               tone="success"
             />
             <MetricCard
               icon={Clock}
               label="昨日消费额"
-              value={formatMoney(yesterdayCost, currency)}
+              value={formatCombinedCost(yesterdayCostCny, yesterdayCostUsd)}
               sub="前一日整日消耗"
             />
             <MetricCard
               icon={Calendar}
               label="7 日日均消费"
-              value={formatMoney(sevenDayAvg, currency)}
+              value={formatCombinedCost(sevenDayAvgCny, sevenDayAvgUsd)}
               sub="近一周滑动均值"
             />
             <MetricCard
@@ -368,9 +408,9 @@ export default function Dashboard() {
             <MetricCard
               icon={Coins}
               label="近一小时扣费"
-              value={formatMoney(dashboard?.last_hour_cost || 0, currency)}
+              value={formatCombinedCost(dashboard?.last_hour_cost_cny, dashboard?.last_hour_cost_usd)}
               sub="高频流式计价走势"
-              tone={Number(dashboard?.last_hour_cost || 0) > 0 ? "warning" : "default"}
+              tone={Number(dashboard?.last_hour_cost_cny || 0) > 0 || Number(dashboard?.last_hour_cost_usd || 0) > 0 ? "warning" : "default"}
             />
           </div>
 
@@ -379,7 +419,7 @@ export default function Dashboard() {
             {/* Bar Chart */}
             <GlassCard className="flex flex-col justify-between">
               <div>
-                <SectionTitle title="近 7 日消费走势" subtitle={`${currency} 结算 / 日`} />
+                <SectionTitle title="近 7 日消费走势" subtitle={`${displayCurrency} 结算 / 日`} />
                 
                 <div className="mt-6 flex h-40 items-end gap-3 rounded-2xl bg-slate-50/70 p-4 border border-slate-100/50">
                   {dailyStats.map((item, index) => (
@@ -388,7 +428,7 @@ export default function Dashboard() {
                         {/* Tooltip on Hover */}
                         <div className="absolute bottom-full mb-1.5 hidden group-hover:flex flex-col items-center z-10 pointer-events-none">
                           <span className="bg-slate-900 text-white text-[9px] font-bold py-1 px-2 rounded-lg whitespace-nowrap shadow-xl">
-                            {formatMoney(item.cost, currency)}
+                            {formatMoney(displayCurrency === 'USD' ? item.costUsd : item.costCny, displayCurrency)}
                           </span>
                           <div className="w-1 h-1 bg-slate-900 rotate-45 -mt-0.5" />
                         </div>
@@ -451,7 +491,7 @@ export default function Dashboard() {
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50/50 border border-slate-100 rounded-2xl">
                         <div className="h-8 w-8 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-2">
-                          <ShieldCheck className="h-4.5 w-4.5" />
+                           <ShieldCheck className="h-[18px] w-[18px]" />
                         </div>
                         <p className="text-xs font-bold text-slate-600">系统状态安全</p>
                         <p className="text-[9px] text-slate-400 font-semibold mt-0.5">未触发任何扣费或安全警报</p>

@@ -119,21 +119,21 @@ export default function MiniWidget() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={handleRefresh}
-            className="grid h-6.5 w-6.5 place-items-center rounded-lg bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+            className="grid h-[26px] w-[26px] place-items-center rounded-lg bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
             title="刷新余额"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin text-white' : ''}`} />
           </button>
           <button
             onClick={handleMaximize}
-            className="grid h-6.5 w-6.5 place-items-center rounded-lg bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
+            className="grid h-[26px] w-[26px] place-items-center rounded-lg bg-white/5 text-slate-400 transition hover:bg-white/10 hover:text-white"
             title="打开主窗口"
           >
             <ExternalLink className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={handleClose}
-            className="grid h-6.5 w-6.5 place-items-center rounded-lg bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20 hover:text-rose-300"
+            className="grid h-[26px] w-[26px] place-items-center rounded-lg bg-rose-500/10 text-rose-400 transition hover:bg-rose-500/20 hover:text-rose-300"
             title="隐藏悬浮窗"
           >
             <X className="h-3.5 w-3.5" />
@@ -180,8 +180,8 @@ export default function MiniWidget() {
       <footer data-tauri-drag-region className="grid grid-cols-3 gap-1 pt-1 text-center">
         <div>
           <p className="text-[9px] font-medium text-slate-400 uppercase">今日预估</p>
-          <p className="mt-0.5 text-xs font-bold text-emerald-400">
-            {formatMoney(dashboard?.today_estimated_cost || 0, 'CNY')}
+          <p className="mt-0.5 text-[10px] font-bold text-emerald-400">
+            {formatMoney(dashboard?.today_estimated_cost_cny || 0, 'CNY')} / {formatMoney(dashboard?.today_estimated_cost_usd || 0, 'USD')}
           </p>
         </div>
         <div className="border-x border-white/5">

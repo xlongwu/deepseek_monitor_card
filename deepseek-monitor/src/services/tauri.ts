@@ -30,8 +30,8 @@ async function invokeCommand<T>(
   return invoke<T>(command, args);
 }
 
-const mockBalance: BalanceSnapshot = {
-  id: 'dev-balance',
+const mockBalanceCny: BalanceSnapshot = {
+  id: 'dev-balance-cny',
   api_key_id: 'dev-key',
   captured_at: new Date().toISOString(),
   is_available: true,
@@ -39,6 +39,17 @@ const mockBalance: BalanceSnapshot = {
   total_balance: '128.60',
   granted_balance: '18.60',
   topped_up_balance: '110.00',
+};
+
+const mockBalanceUsd: BalanceSnapshot = {
+  id: 'dev-balance-usd',
+  api_key_id: 'dev-key',
+  captured_at: new Date().toISOString(),
+  is_available: true,
+  currency: 'USD',
+  total_balance: '18.50',
+  granted_balance: '0.00',
+  topped_up_balance: '18.50',
 };
 
 const mockProxyStatus: ProxyStatus = {
@@ -51,13 +62,19 @@ const mockProxyStatus: ProxyStatus = {
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   return invokeCommand('get_dashboard_summary', undefined, () => ({
-    balance: mockBalance,
+    balance: mockBalanceCny,
+    balance_cny: mockBalanceCny,
+    balance_usd: mockBalanceUsd,
     today_requests: 36,
     today_prompt_tokens: 48200,
     today_completion_tokens: 18740,
     today_total_tokens: 66940,
     today_estimated_cost: '0.19',
     last_hour_cost: '0.04',
+    today_estimated_cost_cny: '0.19',
+    today_estimated_cost_usd: '0.00',
+    last_hour_cost_cny: '0.04',
+    last_hour_cost_usd: '0.00',
     proxy_status: mockProxyStatus,
     last_refresh: new Date().toISOString(),
     status: 'normal',
@@ -65,7 +82,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 }
 
 export async function getBalance(): Promise<BalanceSnapshot> {
-  return invokeCommand('get_balance', undefined, () => mockBalance);
+  return invokeCommand('get_balance', undefined, () => mockBalanceCny);
 }
 
 export async function getUsageStats(range: TimeRange): Promise<UsageStats> {
@@ -75,6 +92,8 @@ export async function getUsageStats(range: TimeRange): Promise<UsageStats> {
     total_completion_tokens: 73200,
     total_tokens: 259200,
     total_estimated_cost: '0.76',
+    total_estimated_cost_cny: '0.76',
+    total_estimated_cost_usd: '0.00',
     by_model: [
       {
         model: 'deepseek-chat',
@@ -152,7 +171,33 @@ export async function acknowledgeAlert(id: string): Promise<void> {
 }
 
 export async function getSettings(): Promise<AppSettings> {
-  return invokeCommand('get_settings');
+  return invokeCommand('get_settings', undefined, () => ({
+    balance_refresh_interval_seconds: 0,
+    startup_on_login: false,
+    show_tray_icon: true,
+    default_currency: 'CNY',
+    timezone: 'Asia/Shanghai',
+    proxy_enabled: false,
+    proxy_host: '127.0.0.1',
+    proxy_port: 8787,
+    proxy_require_token: true,
+    proxy_token: 'sk-local-dev',
+    inject_stream_usage: true,
+    max_body_size_mb: 20,
+    max_concurrent_requests: 32,
+    store_prompt_body: false,
+    store_completion_body: false,
+    store_request_hash: true,
+    redact_headers: true,
+    keep_raw_error_body: false,
+    low_balance_threshold: '10.00',
+    hourly_cost_threshold: '5.00',
+    single_request_token_threshold: 100000,
+    notify_on_401: true,
+    notify_on_429: true,
+    notify_on_503: true,
+    enable_system_notification: true,
+  }));
 }
 
 export async function setSettings(settings: AppSettings): Promise<void> {
@@ -161,7 +206,7 @@ export async function setSettings(settings: AppSettings): Promise<void> {
 
 export async function refreshBalance(): Promise<BalanceSnapshot> {
   return invokeCommand('refresh_balance', undefined, () => ({
-    ...mockBalance,
+    ...mockBalanceCny,
     captured_at: new Date().toISOString(),
   }));
 }

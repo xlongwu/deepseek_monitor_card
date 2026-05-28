@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "postinstall": "node \"%npm_execpath%\" install --prefix deepseek-monitor",
+    "install:app": "node \"%npm_execpath%\" install --prefix deepseek-monitor",
     "dev": "npm run dev --prefix deepseek-monitor",
     "build": "npm run build --prefix deepseek-monitor",
     "tauri": "npm run tauri --prefix deepseek-monitor",

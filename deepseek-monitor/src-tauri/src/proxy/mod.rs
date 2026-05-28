@@ -12,6 +12,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::{oneshot, RwLock};
 use tower::ServiceBuilder;
+use tower::limit::ConcurrencyLimitLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use anyhow::Result;
 use log::{info, error};
@@ -162,6 +163,7 @@ impl LocalProxy {
         let state = self.state.clone();
         let config = state.config.read().await.clone();
         let body_limit = config.max_body_size_mb as usize * 1024 * 1024;
+        let max_concurrent = config.max_concurrent_requests as usize;
 
         Router::new()
             .route("/chat/completions", post(handle_chat_completions))
@@ -171,7 +173,9 @@ impl LocalProxy {
             .route("/models", get(handle_models))
             .route("/v1/models", get(handle_models))
             .route("/user/balance", get(handle_balance))
-            .layer(ServiceBuilder::new().layer(RequestBodyLimitLayer::new(body_limit)))
+            .layer(ServiceBuilder::new()
+                .layer(ConcurrencyLimitLayer::new(max_concurrent))
+                .layer(RequestBodyLimitLayer::new(body_limit)))
             .with_state(state)
     }
 }
@@ -208,7 +212,12 @@ async fn forward_proxy_request(
     
     if config.require_token {
         let token = headers.get("X-Local-Proxy-Token")
-            .and_then(|v| v.to_str().ok());
+            .and_then(|v| v.to_str().ok())
+            .or_else(|| {
+                headers.get("Authorization")
+                    .and_then(|v| v.to_str().ok())
+                    .and_then(|s| s.strip_prefix("Bearer "))
+            });
         if token != Some(&config.token) {
             return Response::builder()
                 .status(StatusCode::UNAUTHORIZED)
@@ -482,7 +491,7 @@ async fn forward_proxy_request(
                         notify_on_503: true,
                     };
                     
-                    if let Ok(cost) = aggregator.get_last_hour_cost(&api_key_id_clone).await {
+                    if let Ok(cost) = aggregator.get_last_hour_cost(&api_key_id_clone, log.currency.as_deref().unwrap_or("CNY")).await {
                         let _ = alert_engine.check_hourly_cost(&alert_config, &api_key_id_clone, &cost).await;
                     }
                     
@@ -626,7 +635,7 @@ async fn forward_proxy_request(
                     notify_on_503: true,
                 };
                 
-                if let Ok(cost) = aggregator.get_last_hour_cost(&api_key_id_clone).await {
+                if let Ok(cost) = aggregator.get_last_hour_cost(&api_key_id_clone, log.currency.as_deref().unwrap_or("CNY")).await {
                     let _ = alert_engine.check_hourly_cost(&alert_config, &api_key_id_clone, &cost).await;
                 }
                 
@@ -646,10 +655,28 @@ async fn forward_proxy_request(
     }
 }
 
-async fn handle_models(State(_state): State<ProxyState>) -> impl IntoResponse {
+async fn handle_models(State(state): State<ProxyState>) -> impl IntoResponse {
+    let api_key_id = state.active_api_key_id.read().await.clone();
+    let api_key = match state.keychain.get_api_key(&api_key_id) {
+        Ok(key) => key,
+        Err(_) => {
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Body::from(json!({
+                    "error": {
+                        "message": "Failed to read API key from keychain",
+                        "type": "local_proxy_error",
+                        "code": "KEYCHAIN_READ_FAILED"
+                    }
+                }).to_string()))
+                .unwrap();
+        }
+    };
+
     let client = reqwest::Client::new();
     
     match client.get("https://api.deepseek.com/models")
+        .header("Authorization", format!("Bearer {}", api_key))
         .send()
         .await {
         Ok(response) => {

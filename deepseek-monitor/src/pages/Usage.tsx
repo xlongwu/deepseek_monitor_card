@@ -7,8 +7,8 @@ import {
   UserCheck,
   RefreshCw,
 } from 'lucide-react';
-import { getUsageStats } from '../services/tauri';
-import type { UsageStats, TimeRange } from '../types';
+import { getUsageStats, getSettings } from '../services/tauri';
+import type { UsageStats, TimeRange, AppSettings } from '../types';
 import { GlassCard, PageHeader, MetricCard, SectionTitle } from '../components/AppleUI';
 
 function formatMoney(value: number | string | undefined, currency = 'CNY') {
@@ -18,6 +18,12 @@ function formatMoney(value: number | string | undefined, currency = 'CNY') {
     currency,
     minimumFractionDigits: 2,
   }).format(n);
+}
+
+function formatCombinedCost(cny: string | number | undefined, usd: string | number | undefined) {
+  const cnyVal = Number(cny || 0);
+  const usdVal = Number(usd || 0);
+  return `${formatMoney(cnyVal, 'CNY')} / ${formatMoney(usdVal, 'USD')}`;
 }
 
 function formatTokens(count?: number) {
@@ -33,11 +39,13 @@ function formatTokens(count?: number) {
 
 export default function Usage() {
   const [stats, setStats] = useState<UsageStats | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [loading, setLoading] = useState(false);
   const [days, setDays] = useState(7);
 
   useEffect(() => {
     loadStats();
+    getSettings().then(setSettings).catch(console.error);
   }, [days]);
 
   async function loadStats() {
@@ -54,6 +62,8 @@ export default function Usage() {
       setLoading(false);
     }
   }
+
+  const displayCurrency = settings?.default_currency || 'CNY';
 
   return (
     <div className="p-6 overflow-y-auto max-h-[100vh]">
@@ -80,7 +90,7 @@ export default function Usage() {
       {loading ? (
         <div className="flex items-center justify-center h-64 min-h-[300px]">
           <GlassCard hoverEffect={false} className="p-6 text-center w-[200px] flex flex-col items-center">
-            <RefreshCw className="h-6.5 w-6.5 text-blue-500 animate-spin mb-3" />
+            <RefreshCw className="h-[26px] w-[26px] text-blue-500 animate-spin mb-3" />
             <p className="text-xs font-extrabold text-slate-700">正在生成账单...</p>
           </GlassCard>
         </div>
@@ -116,7 +126,7 @@ export default function Usage() {
             <MetricCard
               icon={Coins}
               label="预估总费用"
-              value={formatMoney(stats?.total_estimated_cost || 0)}
+              value={formatCombinedCost(stats?.total_estimated_cost_cny, stats?.total_estimated_cost_usd)}
               sub="日滑动周期累计"
               tone="default"
               delay={0.08}
@@ -126,7 +136,7 @@ export default function Usage() {
           {/* Model distribution sheet (Apple Numbers Style) */}
           <GlassCard delay={0.1}>
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50">
-              <Cpu className="h-4.5 w-4.5 text-blue-500" />
+              <Cpu className="h-[18px] w-[18px] text-blue-500" />
               <SectionTitle title="按模型分类统计" subtitle="不同 DeepSeek 架构模型对 Tokens 的计价与消耗明细表格。" />
             </div>
 
@@ -142,7 +152,7 @@ export default function Usage() {
                     <th className="px-4 py-3 text-right">预估费用</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-150">
+                <tbody className="divide-y divide-slate-200">
                   {stats?.by_model && stats.by_model.length > 0 ? (
                     stats.by_model.map((m) => (
                       <tr key={m.model} className="hover:bg-slate-50/50 transition-colors font-medium">
@@ -151,7 +161,7 @@ export default function Usage() {
                         <td className="px-4 py-3 text-slate-400 font-mono">{m.prompt_tokens.toLocaleString()}</td>
                         <td className="px-4 py-3 text-slate-400 font-mono">{m.completion_tokens.toLocaleString()}</td>
                         <td className="px-4 py-3 text-slate-700 font-bold font-mono">{m.total_tokens.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-slate-800 font-extrabold text-right font-mono">{formatMoney(m.estimated_cost)}</td>
+                        <td className="px-4 py-3 text-slate-800 font-extrabold text-right font-mono">{formatMoney(m.estimated_cost, displayCurrency)}</td>
                       </tr>
                     ))
                   ) : (
@@ -169,7 +179,7 @@ export default function Usage() {
           {/* Sources distribution sheet */}
           <GlassCard delay={0.12}>
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50">
-              <UserCheck className="h-4.5 w-4.5 text-blue-500" />
+              <UserCheck className="h-[18px] w-[18px] text-blue-500" />
               <SectionTitle title="按调用来源分类" subtitle="根据第三方 IDE（如 Cline、Cursor）、脚本或工具别名识别的客户端分布。" />
             </div>
 
@@ -182,7 +192,7 @@ export default function Usage() {
                     <th className="px-4 py-3 text-right">预估消费总额</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-150">
+                <tbody className="divide-y divide-slate-200">
                   {stats?.by_source && stats.by_source.length > 0 ? (
                     stats.by_source.map((s) => (
                       <tr key={s.source_name} className="hover:bg-slate-50/50 transition-colors font-medium">
@@ -194,7 +204,7 @@ export default function Usage() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-slate-500 font-semibold">{s.request_count} 次</td>
-                        <td className="px-4 py-3 text-slate-850 font-extrabold text-right font-mono">{formatMoney(s.estimated_cost)}</td>
+                        <td className="px-4 py-3 text-slate-800 font-extrabold text-right font-mono">{formatMoney(s.estimated_cost, displayCurrency)}</td>
                       </tr>
                     ))
                   ) : (

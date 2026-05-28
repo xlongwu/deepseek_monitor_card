@@ -3,12 +3,12 @@
 
 -- Default application settings
 INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES
-('balance_refresh_interval_seconds', '60', datetime('now')),
-('startup_on_login', 'true', datetime('now')),
+('balance_refresh_interval_seconds', '0', datetime('now')),
+('startup_on_login', 'false', datetime('now')),
 ('show_tray_icon', 'true', datetime('now')),
 ('default_currency', 'CNY', datetime('now')),
 ('timezone', 'Asia/Shanghai', datetime('now')),
-('proxy_enabled', 'true', datetime('now')),
+('proxy_enabled', 'false', datetime('now')),
 ('proxy_host', '127.0.0.1', datetime('now')),
 ('proxy_port', '8787', datetime('now')),
 ('proxy_require_token', 'true', datetime('now')),

@@ -154,7 +154,7 @@ export default function Settings() {
           {/* Group 1: API Key Management */}
           <GlassCard>
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50">
-              <Key className="h-4.5 w-4.5 text-blue-500" />
+              <Key className="h-[18px] w-[18px] text-blue-500" />
               <SectionTitle title="API Key 密钥包" subtitle="由您的操作系统本机安全钥匙串托管，物理防窃防泄漏。" />
             </div>
 
@@ -169,7 +169,7 @@ export default function Settings() {
                     <th className="px-4 py-3 text-right">管理操作</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-150">
+                <tbody className="divide-y divide-slate-200">
                   {keys.map((k) => (
                     <tr key={k.id} className="hover:bg-slate-50/50 transition-colors font-medium">
                       <td className="px-4 py-3 text-slate-800 font-bold">{k.alias}</td>
@@ -255,7 +255,7 @@ export default function Settings() {
                 <button
                   type="submit"
                   disabled={keyLoading}
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow hover:bg-slate-850 transition duration-150 cursor-pointer disabled:opacity-50"
+                  className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow hover:bg-slate-800 transition duration-150 cursor-pointer disabled:opacity-50"
                 >
                   {keyLoading ? '正在配置钥匙串...' : '添加并激活'}
                 </button>
@@ -267,7 +267,7 @@ export default function Settings() {
           {appSettings && (
             <GlassCard>
               <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50">
-                <RefreshCw className="h-4.5 w-4.5 text-blue-500" />
+                <RefreshCw className="h-[18px] w-[18px] text-blue-500" />
                 <SectionTitle title="余额刷新策略" subtitle="定时向 DeepSeek 官方服务器获取最新计费快照的频率设定。" />
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -286,11 +286,11 @@ export default function Settings() {
                     }
                     className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800"
                   >
-                    <option value={15}>15 秒</option>
-                    <option value={30}>30 秒</option>
-                    <option value={60}>60 秒</option>
-                    <option value={300}>5 分钟</option>
-                    <option value={600}>10 分钟</option>
+                    <option value={0}>手动刷新 (关闭轮询)</option>
+                    <option value={300}>每 5 分钟</option>
+                    <option value={600}>每 10 分钟</option>
+                    <option value={1800}>每 30 分钟</option>
+                    <option value={3600}>每 60 分钟</option>
                   </select>
                 </div>
 
@@ -321,7 +321,7 @@ export default function Settings() {
           {appSettings && (
             <GlassCard>
               <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50">
-                <Bell className="h-4.5 w-4.5 text-blue-500" />
+                <Bell className="h-[18px] w-[18px] text-blue-500" />
                 <SectionTitle title="告警与防刷安全策略" subtitle="对高频扣费、异常 HTTP 报错以及单次突发大 tokens 的本地防御阈值设置。" />
               </div>
               <div className="space-y-4">
@@ -380,7 +380,7 @@ export default function Settings() {
                         onChange={(e) =>
                           setAppSettings({ ...appSettings, notify_on_401: e.target.checked })
                         }
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4.5 w-4.5"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-[18px] w-[18px]"
                       />
                     </label>
                     <label className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-100 cursor-pointer">
@@ -391,7 +391,7 @@ export default function Settings() {
                         onChange={(e) =>
                           setAppSettings({ ...appSettings, notify_on_429: e.target.checked })
                         }
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4.5 w-4.5"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-[18px] w-[18px]"
                       />
                     </label>
                     <label className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-100 cursor-pointer">
@@ -402,7 +402,7 @@ export default function Settings() {
                         onChange={(e) =>
                           setAppSettings({ ...appSettings, notify_on_503: e.target.checked })
                         }
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-4.5 w-4.5"
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 h-[18px] w-[18px]"
                       />
                     </label>
                   </div>
@@ -414,7 +414,7 @@ export default function Settings() {
           {/* Group 4: Advanced Privacy & Purges */}
           <GlassCard>
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200/50">
-              <Shield className="h-4.5 w-4.5 text-rose-500" />
+              <Shield className="h-[18px] w-[18px] text-rose-500" />
               <SectionTitle title="隐私与安全高级设置" subtitle="本地日志物理归档策略及高级擦除维护选项。" />
             </div>
             <div className="rounded-xl border border-rose-500/10 bg-rose-500/5 p-4 flex items-center justify-between">
@@ -444,7 +444,7 @@ export default function Settings() {
           {appSettings && (
             <GlassCard hoverEffect={false} className="sticky top-6 p-5 border border-white/90 shadow-2xl flex flex-col gap-4">
               <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200/40">
-                <Lock className="h-4.5 w-4.5 text-blue-500" />
+                <Lock className="h-[18px] w-[18px] text-blue-500" />
                 <h4 className="text-xs font-black tracking-tight text-slate-800 uppercase">策略保存配置</h4>
               </div>
               <p className="text-[10px] font-semibold text-slate-400 leading-relaxed">
@@ -477,7 +477,7 @@ export default function Settings() {
           <GlassCard hoverEffect={true} className="flex flex-col justify-between">
             <div>
               <div className="flex items-center gap-2 pb-3 border-b border-slate-200/40 mb-4">
-                <FileDown className="h-4.5 w-4.5 text-slate-600" />
+                <FileDown className="h-[18px] w-[18px] text-slate-600" />
                 <h4 className="text-xs font-black tracking-tight text-slate-800 uppercase">数据账本离线导出</h4>
               </div>
               <p className="text-[10px] font-semibold text-slate-400 leading-relaxed mb-4">
@@ -530,7 +530,7 @@ export default function Settings() {
                 <button
                   onClick={handleExport}
                   disabled={exporting}
-                  className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-850 transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 mt-2"
+                  className="w-full rounded-xl bg-slate-900 px-4 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 mt-2"
                 >
                   <FileDown className="h-4 w-4" />
                   {exporting ? '导出执行中...' : '启动归档导出'}

@@ -68,7 +68,7 @@ impl UsageAggregator {
               prompt_tokens, completion_tokens, total_tokens, reasoning_tokens, 
               estimated_cost, currency, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
-             ON CONFLICT(api_key_id, usage_date, source_name, model) DO UPDATE SET
+             ON CONFLICT(api_key_id, usage_date, source_name, model, currency) DO UPDATE SET
              request_count = request_count + 1,
              prompt_tokens = prompt_tokens + excluded.prompt_tokens,
              completion_tokens = completion_tokens + excluded.completion_tokens,
@@ -95,7 +95,7 @@ impl UsageAggregator {
         Ok(())
     }
 
-    pub async fn get_today_stats(&self, api_key_id: &str) -> Result<(i64, i64, i64, i64, String)> {
+    pub async fn get_today_stats(&self, api_key_id: &str, currency: &str) -> Result<(i64, i64, i64, i64, String)> {
         let today = Utc::now().format("%Y-%m-%d").to_string();
         let tomorrow = (Utc::now() + Duration::days(1)).format("%Y-%m-%d").to_string();
 
@@ -108,10 +108,12 @@ impl UsageAggregator {
                 SUM(CAST(COALESCE(estimated_cost, '0') AS DECIMAL)) as estimated_cost
              FROM request_logs 
              WHERE api_key_id = ?1 
-               AND request_started_at >= ?2 
-               AND request_started_at < ?3"
+               AND currency = ?2
+               AND request_started_at >= ?3 
+               AND request_started_at < ?4"
         )
         .bind(api_key_id)
+        .bind(currency)
         .bind(&today)
         .bind(&tomorrow)
         .fetch_one(&self.pool)
@@ -120,15 +122,16 @@ impl UsageAggregator {
         Ok((row.0, row.1, row.2, row.3, row.4.unwrap_or_else(|| "0.00".to_string())))
     }
 
-    pub async fn get_last_hour_cost(&self, api_key_id: &str) -> Result<String> {
+    pub async fn get_last_hour_cost(&self, api_key_id: &str, currency: &str) -> Result<String> {
         let one_hour_ago = (Utc::now() - Duration::hours(1)).to_rfc3339();
 
         let cost: Option<String> = sqlx::query_scalar(
             "SELECT SUM(CAST(COALESCE(estimated_cost, '0') AS DECIMAL)) 
              FROM request_logs 
-             WHERE api_key_id = ?1 AND request_started_at >= ?2"
+             WHERE api_key_id = ?1 AND currency = ?2 AND request_started_at >= ?3"
         )
         .bind(api_key_id)
+        .bind(currency)
         .bind(&one_hour_ago)
         .fetch_one(&self.pool)
         .await?;
@@ -136,14 +139,13 @@ impl UsageAggregator {
         Ok(cost.unwrap_or_else(|| "0.00".to_string()))
     }
 
-    pub async fn get_usage_stats(&self, api_key_id: &str, range: &TimeRange) -> Result<UsageStats> {
-        let total: (i64, i64, i64, i64, Option<String>) = sqlx::query_as(
+    pub async fn get_usage_stats(&self, api_key_id: &str, range: &TimeRange, currency: &str) -> Result<UsageStats> {
+        let total: (i64, i64, i64, i64) = sqlx::query_as(
             "SELECT 
                 COUNT(*) as request_count,
                 COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
                 COALESCE(SUM(completion_tokens), 0) as completion_tokens,
-                COALESCE(SUM(total_tokens), 0) as total_tokens,
-                SUM(CAST(COALESCE(estimated_cost, '0') AS DECIMAL)) as estimated_cost
+                COALESCE(SUM(total_tokens), 0) as total_tokens
              FROM request_logs 
              WHERE api_key_id = ?1 
                AND request_started_at >= ?2 
@@ -155,9 +157,40 @@ impl UsageAggregator {
         .fetch_one(&self.pool)
         .await?;
 
+        let cost_cny: Option<String> = sqlx::query_scalar(
+            "SELECT SUM(CAST(COALESCE(estimated_cost, '0') AS DECIMAL)) 
+             FROM request_logs 
+             WHERE api_key_id = ?1 AND currency = 'CNY' AND request_started_at >= ?2 AND request_started_at < ?3"
+        )
+        .bind(api_key_id)
+        .bind(&range.start)
+        .bind(&range.end)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let cost_usd: Option<String> = sqlx::query_scalar(
+            "SELECT SUM(CAST(COALESCE(estimated_cost, '0') AS DECIMAL)) 
+             FROM request_logs 
+             WHERE api_key_id = ?1 AND currency = 'USD' AND request_started_at >= ?2 AND request_started_at < ?3"
+        )
+        .bind(api_key_id)
+        .bind(&range.start)
+        .bind(&range.end)
+        .fetch_one(&self.pool)
+        .await?;
+
+        let cny_str = cost_cny.unwrap_or_else(|| "0.00".to_string());
+        let usd_str = cost_usd.unwrap_or_else(|| "0.00".to_string());
+        
+        let total_cost = if currency == "USD" {
+            usd_str.clone()
+        } else {
+            cny_str.clone()
+        };
+
         let by_model: Vec<ModelStat> = sqlx::query_as(
             "SELECT 
-                COALESCE(model, 'unknown') as model,
+                COALESCE(model, 'unknown') || ' (' || COALESCE(currency, 'CNY') || ')' as model,
                 COUNT(*) as request_count,
                 COALESCE(SUM(prompt_tokens), 0) as prompt_tokens,
                 COALESCE(SUM(completion_tokens), 0) as completion_tokens,
@@ -167,7 +200,7 @@ impl UsageAggregator {
              WHERE api_key_id = ?1 
                AND request_started_at >= ?2 
                AND request_started_at < ?3
-             GROUP BY model
+             GROUP BY model, currency
              ORDER BY estimated_cost DESC"
         )
         .bind(api_key_id)
@@ -178,14 +211,14 @@ impl UsageAggregator {
 
         let by_source: Vec<SourceStat> = sqlx::query_as(
             "SELECT 
-                COALESCE(source_name, 'unknown') as source_name,
+                COALESCE(source_name, 'unknown') || ' (' || COALESCE(currency, 'CNY') || ')' as source_name,
                 COUNT(*) as request_count,
                 SUM(CAST(COALESCE(estimated_cost, '0') AS DECIMAL)) as estimated_cost
              FROM request_logs 
              WHERE api_key_id = ?1 
                AND request_started_at >= ?2 
                AND request_started_at < ?3
-             GROUP BY source_name
+             GROUP BY source_name, currency
              ORDER BY request_count DESC"
         )
         .bind(api_key_id)
@@ -199,7 +232,9 @@ impl UsageAggregator {
             total_prompt_tokens: total.1,
             total_completion_tokens: total.2,
             total_tokens: total.3,
-            total_estimated_cost: total.4.unwrap_or_else(|| "0.00".to_string()),
+            total_estimated_cost: total_cost,
+            total_estimated_cost_cny: cny_str,
+            total_estimated_cost_usd: usd_str,
             by_model,
             by_source,
         })
